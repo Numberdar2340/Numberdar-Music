@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>All Songs - Numberdar Music</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: white;
+      margin: 0;
+      padding: 0;
+    }
+    header {
+      padding: 15px;
+      background: #1db954;
+      text-align: center;
+      font-size: 1.5em;
+      font-weight: bold;
+    }
+    .search {
+      padding: 10px;
+      text-align: center;
+      background: #181818;
+    }
+    input {
+      padding: 8px;
+      width: 80%;
+      max-width: 400px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1em;
+    }
+    .song-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .song {
+      padding: 15px;
+      border-bottom: 1px solid #333;
+      cursor: pointer;
+    }
+    .song:hover {
+      background: #282828;
+    }
+    audio {
+      width: 100%;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+<header>🎵 Numberdar Music 🎵</header>
+
+<div class="search">
+  <input type="text" id="searchInput" placeholder="Search for a song...">
+</div>
+
+<ul class="song-list" id="songList"></ul>
+
+<div id="player" style="padding: 15px; background: #181818;">
+  <h3 id="nowPlaying">Select a song to play</h3>
+  <audio controls id="audioPlayer">
+    <source src="" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+</div>
+
+<script>
+  const songs = [
+    { title: "Acoustic Breeze", artist: "Benjamin Tissot", url: "https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3" },
+    { title: "Creative Minds", artist: "Benjamin Tissot", url: "https://www.bensound.com/bensound-music/bensound-creativeminds.mp3" },
+    { title: "Sunny", artist: "Benjamin Tissot", url: "https://www.bensound.com/bensound-music/bensound-sunny.mp3" },
+    { title: "Energy", artist: "Benjamin Tissot", url: "https://www.bensound.com/bensound-music/bensound-energy.mp3" }
+  ];
+
+  const songList = document.getElementById("songList");
+  const audioPlayer = document.getElementById("audioPlayer");
+  const nowPlaying = document.getElementById("nowPlaying");
+
+  function displaySongs(filter = "") {
+    songList.innerHTML = "";
+    songs
+      .filter(song => song.title.toLowerCase().includes(filter.toLowerCase()) || song.artist.toLowerCase().includes(filter.toLowerCase()))
+      .forEach(song => {
+        const li = document.createElement("li");
+        li.classList.add("song");
+        li.textContent = `${song.title} - ${song.artist}`;
+        li.onclick = () => {
+          audioPlayer.src = song.url;
+          audioPlayer.play();
+          nowPlaying.textContent = `Now Playing: ${song.title} - ${song.artist}`;
+        };
+        songList.appendChild(li);
+      });
+  }
+
+  document.getElementById("searchInput").addEventListener("input", (e) => {
+    displaySongs(e.target.value);
+  });
+
+  displaySongs();
+</script>
+
+</body>
+</html>
