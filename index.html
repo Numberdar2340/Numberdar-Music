@@ -1,109 +1,138 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>All Songs - Numberdar Music</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Numberdar Music</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #121212;
-      color: white;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      padding: 15px;
-      background: #1db954;
-      text-align: center;
-      font-size: 1.5em;
-      font-weight: bold;
-    }
-    .search {
-      padding: 10px;
-      text-align: center;
-      background: #181818;
-    }
-    input {
-      padding: 8px;
-      width: 80%;
-      max-width: 400px;
-      border: none;
-      border-radius: 5px;
-      font-size: 1em;
-    }
-    .song-list {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-    .song {
-      padding: 15px;
-      border-bottom: 1px solid #333;
-      cursor: pointer;
-    }
-    .song:hover {
-      background: #282828;
-    }
-    audio {
-      width: 100%;
-      margin-top: 10px;
-    }
+    :root{--bg:#0f0f10;--card:#121212;--muted:#9aa0a6;--accent:#1db954}
+    body{margin:0;font-family:Inter,system-ui,Arial,sans-serif;background:var(--bg);color:#fff}
+    header{padding:16px;text-align:center;background:linear-gradient(90deg,#0b0b0b, #111);font-weight:700}
+    .container{max-width:920px;margin:18px auto;padding:0 12px}
+    #search{width:100%;padding:10px 12px;border-radius:8px;border:1px solid #222;background:#0b0b0b;color:#fff;box-sizing:border-box}
+    .list{margin-top:12px;border-radius:8px;overflow:hidden;border:1px solid #222;background:var(--card)}
+    .song{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #171717;cursor:pointer}
+    .song:last-child{border-bottom:none}
+    .song:hover{background:#131313}
+    .meta{display:flex;flex-direction:column}
+    .title{font-size:15px}
+    .sub{font-size:13px;color:var(--muted);margin-top:4px}
+    #playerWrap{position:fixed;left:0;right:0;bottom:0;background:#0b0b0b;padding:10px;border-top:1px solid #222;display:flex;align-items:center;gap:12px}
+    #nowPlaying{font-size:14px;color:#fff;margin:0}
+    audio{width:100%;max-width:480px}
+    @media(max-width:600px){.container{padding:0 10px}audio{max-width:100%}}
   </style>
 </head>
 <body>
+  <header>🎵 Numberdar Music</header>
+  <div class="container">
+    <input id="search" placeholder="Search songs by name..." />
+    <div class="list" id="songList">Loading songs...</div>
+  </div>
 
-<header>🎵 Numberdar Music 🎵</header>
-
-<div class="search">
-  <input type="text" id="searchInput" placeholder="Search for a song...">
-</div>
-
-<ul class="song-list" id="songList"></ul>
-
-<div id="player" style="padding: 15px; background: #181818;">
-  <h3 id="nowPlaying">Select a song to play</h3>
-  <audio controls id="audioPlayer">
-    <source src="" type="audio/mpeg">
-    Your browser does not support the audio element.
-  </audio>
-</div>
+  <div id="playerWrap" style="display:none">
+    <div style="flex:1">
+      <div id="nowPlaying">Now Playing: —</div>
+      <div id="subInfo" style="color:#9aa0a6;font-size:13px">Numberdar Music</div>
+    </div>
+    <audio id="player" controls></audio>
+  </div>
 
 <script>
-  const songs = [
-    { title: "Acoustic Breeze", artist: "Benjamin Tissot", url: "https://www.bensound.com/bensound-music/bensound-acousticbreeze.mp3" },
-    { title: "Creative Minds", artist: "Benjamin Tissot", url: "https://www.bensound.com/bensound-music/bensound-creativeminds.mp3" },
-    { title: "Sunny", artist: "Benjamin Tissot", url: "https://www.bensound.com/bensound-music/bensound-sunny.mp3" },
-    { title: "Energy", artist: "Benjamin Tissot", url: "https://www.bensound.com/bensound-music/bensound-energy.mp3" }
-  ];
+/* ====== CONFIG ====== */
+const folderId = "17bDhO3Q8JpriP2DS5sNLpco1oEOPzVWX";
+const apiKey   = "AIzaSyBG5eISifNro1I2iF6gGeuh0gnHtThPe6U";
+/* ==================== */
 
-  const songList = document.getElementById("songList");
-  const audioPlayer = document.getElementById("audioPlayer");
-  const nowPlaying = document.getElementById("nowPlaying");
+const songListEl = document.getElementById('songList');
+const playerWrap  = document.getElementById('playerWrap');
+const playerEl    = document.getElementById('player');
+const nowPlaying  = document.getElementById('nowPlaying');
+const subInfo     = document.getElementById('subInfo');
+const searchInput = document.getElementById('search');
 
-  function displaySongs(filter = "") {
-    songList.innerHTML = "";
-    songs
-      .filter(song => song.title.toLowerCase().includes(filter.toLowerCase()) || song.artist.toLowerCase().includes(filter.toLowerCase()))
-      .forEach(song => {
-        const li = document.createElement("li");
-        li.classList.add("song");
-        li.textContent = `${song.title} - ${song.artist}`;
-        li.onclick = () => {
-          audioPlayer.src = song.url;
-          audioPlayer.play();
-          nowPlaying.textContent = `Now Playing: ${song.title} - ${song.artist}`;
-        };
-        songList.appendChild(li);
-      });
+let songs = [];
+
+/* Build Drive API URL */
+function driveListUrl(folderId, apiKey, pageToken = '') {
+  let q = `'${folderId}'+in+parents`;
+  let fields = 'nextPageToken,files(id,name,mimeType,modifiedTime)';
+  let url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&key=${apiKey}&fields=${encodeURIComponent(fields)}&pageSize=100&orderBy=name`;
+  if(pageToken) url += `&pageToken=${pageToken}`;
+  return url;
+}
+
+/* fetch all pages (if many files) */
+async function fetchAllFiles(folderId, apiKey){
+  let results = [];
+  let token = '';
+  do {
+    const url = driveListUrl(folderId, apiKey, token);
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('Drive API error: ' + res.status);
+    const json = await res.json();
+    if(json.files) results = results.concat(json.files);
+    token = json.nextPageToken || '';
+  } while(token);
+  return results;
+}
+
+function makePlayableUrl(fileId){
+  // direct download/play link for Drive public files
+  return `https://drive.google.com/uc?export=download&id=${fileId}`;
+}
+
+function renderList(filtered){
+  songListEl.innerHTML = '';
+  if(filtered.length === 0){
+    songListEl.innerHTML = '<div style="padding:14px;color:#9aa0a6">No songs found.</div>';
+    return;
   }
-
-  document.getElementById("searchInput").addEventListener("input", (e) => {
-    displaySongs(e.target.value);
+  filtered.forEach(f => {
+    const el = document.createElement('div');
+    el.className = 'song';
+    el.innerHTML = `<div class="meta"><div class="title">${escapeHtml(f.name)}</div><div class="sub">${f.mimeType} • ${f.modifiedTime? f.modifiedTime.split('T')[0] : ''}</div></div>
+                    <div style="font-size:13px;color:var(--muted)">▶︎</div>`;
+    el.onclick = () => {
+      const url = makePlayableUrl(f.id);
+      playerEl.src = url;
+      playerEl.play().catch(()=>{});
+      nowPlaying.textContent = 'Now Playing: ' + f.name;
+      subInfo.textContent = `${f.mimeType}`;
+      playerWrap.style.display = 'flex';
+      window.scrollTo({top:0,behavior:'smooth'});
+    };
+    songListEl.appendChild(el);
   });
+}
 
-  displaySongs();
+function escapeHtml(s){ return s.replace(/[&<>"']/g,c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+async function init(){
+  try{
+    songListEl.innerHTML = '<div style="padding:14px;color:#9aa0a6">Loading songs from Drive…</div>';
+    const files = await fetchAllFiles(folderId, apiKey);
+    // filter audio types
+    songs = files.filter(f => f.mimeType && f.mimeType.startsWith('audio'));
+    // fallback: also include common audio extensions if mime not set
+    if(songs.length === 0){
+      songs = files.filter(f => /\.(mp3|wav|m4a|ogg)$/i.test(f.name));
+    }
+    renderList(songs);
+  } catch(err){
+    console.error(err);
+    songListEl.innerHTML = `<div style="padding:14px;color:#f88">Could not load songs. Check API key, Drive sharing, or console for errors.</div>`;
+  }
+}
+
+searchInput.addEventListener('input', ()=> {
+  const q = searchInput.value.trim().toLowerCase();
+  if(!q) return renderList(songs);
+  const filtered = songs.filter(s => s.name.toLowerCase().includes(q));
+  renderList(filtered);
+});
+
+init();
 </script>
-
 </body>
 </html>
